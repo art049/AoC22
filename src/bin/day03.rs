@@ -2,7 +2,6 @@
 #![feature(iter_next_chunk)]
 extern crate test;
 
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::{
     fs::File,
@@ -50,14 +49,13 @@ fn part2(mut lines: impl Iterator<Item = String>) -> u32 {
     let mut total_priorities = 0;
     while let Ok(group) = &lines.next_chunk::<GROUP_SIZE>() {
         let first_items = group.first().expect("No item in the chunk").chars();
-        let other_sets: Vec<HashSet<char>> = group
+        let other_sets: &Vec<HashSet<char>> = &group
             .into_iter()
             .skip(1)
             .map(|s| s.chars().into_iter().collect::<HashSet<char>>())
             .collect();
 
-        let is_item_in_others =
-            |item: &char| other_sets.clone().into_iter().all(|set| set.contains(item));
+        let is_item_in_others = |item: &char| other_sets.into_iter().all(|set| set.contains(item));
 
         let common_item = first_items
             .filter(is_item_in_others)
