@@ -7,3 +7,4 @@ authors = ["Arthur Pastel <arthur.pastel@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+itertools = "0.10.5"
