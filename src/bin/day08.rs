@@ -7,7 +7,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 
 const DAY: &str = "08";
 
@@ -71,8 +71,6 @@ fn part1(lines: &Vec<String>) -> u32 {
     }
     let edge_visible_trees = (2 * n + 2 * m - 4) as u32;
     let inner_visible_trees = visible_set.len() as u32;
-    println!("Edge: {edge_visible_trees}");
-    println!("Inner: {inner_visible_trees}");
 
     edge_visible_trees + inner_visible_trees
 }
@@ -85,39 +83,27 @@ fn part2(lines: &Vec<String>) -> u32 {
             return 0;
         }
         let height = grid[i][j];
-        let mut visibility = [0u32; 4];
-        //Top
-        for k in 1..=i {
-            visibility[0] += 1;
-            if height <= grid[i - k][j] {
-                break;
-            }
-        }
-        //Bottom
-        for k in i + 1..n {
-            visibility[2] += 1;
-            if height <= grid[k][j] {
-                break;
-            }
-        }
-        //Right
-        for k in j + 1..m {
-            visibility[1] += 1;
-            if height <= grid[i][k] {
-                break;
-            }
-        }
-        //Left
-        for k in 1..=j {
-            visibility[3] += 1;
-            if height <= grid[i][j - k] {
-                break;
-            }
-        }
-        visibility.iter().fold(1, |acc, v| acc * v)
+
+        let bottom_visibility = ((i + 1..n).take_while(|k| height > grid[*k][j]).count() + 1)
+            .clamp(0, (i + 1..n).count());
+        let top_visibility = ((0..=i - 1)
+            .rev()
+            .take_while(|k| height > grid[*k][j])
+            .count()
+            + 1)
+        .clamp(0, (0..=i - 1).count());
+        let right_visibility = ((j + 1..m).take_while(|k| height > grid[i][*k]).count() + 1)
+            .clamp(0, (j + 1..m).count());
+        let left_visibility = ((0..=j - 1)
+            .rev()
+            .take_while(|k| height > grid[i][*k])
+            .count()
+            + 1)
+        .clamp(0, (0..=j - 1).count());
+
+        (bottom_visibility * top_visibility * right_visibility * left_visibility) as u32
     };
-    (1..n - 1)
-        .cartesian_product(1..m - 1)
+    iproduct!(1..n - 1, 1..m - 1)
         .map(|(i, j)| get_scenic_score(i, j))
         .max()
         .unwrap()
