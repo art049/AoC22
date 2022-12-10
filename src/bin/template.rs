@@ -6,18 +6,23 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+use itertools::Itertools;
+
 const DAY: &str = "XX";
 
-fn get_input() -> impl Iterator<Item = String> {
+fn get_input() -> Vec<String> {
     let path = format!("inputs/day{}.txt", DAY);
     let file = File::open(path).expect("Could not open file");
-    BufReader::new(file).lines().filter_map(|line| line.ok())
+    BufReader::new(file)
+        .lines()
+        .filter_map(|line| line.ok())
+        .collect_vec()
 }
 
-fn part1(lines: &impl Iterator<Item = String>) -> u32 {
+fn part1(lines: &Vec<String>) -> u32 {
     0
 }
-fn part2(lines: &impl Iterator<Item = String>) -> u32 {
+fn part2(lines: &Vec<String>) -> u32 {
     0
 }
 
@@ -37,13 +42,13 @@ mod tests {
 
     #[bench]
     fn bench_part1(b: &mut Bencher) {
-        let lines: Vec<String> = get_input().collect();
-        b.iter(|| part1(&black_box(lines.to_vec().into_iter())));
+        let lines: Vec<String> = get_input();
+        b.iter(|| part1(black_box(&lines)));
     }
 
     #[bench]
     fn bench_part2(b: &mut Bencher) {
-        let lines: Vec<String> = get_input().collect();
-        b.iter(|| part2(&black_box(lines.to_vec().into_iter())));
+        let lines: Vec<String> = get_input();
+        b.iter(|| part2(black_box(&lines)));
     }
 }
