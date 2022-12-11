@@ -8,3 +8,4 @@ authors = ["Arthur Pastel <arthur.pastel@gmail.com>"]
 
 [dependencies]
 itertools = "0.10.5"
+num-bigint = "0.4"
