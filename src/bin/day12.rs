@@ -4,7 +4,7 @@ extern crate test;
 use itertools::{iproduct, Itertools};
 use petgraph::{graph::NodeIndex, visit::IntoNodeReferences, Directed, Graph};
 use std::{
-    collections::{BinaryHeap, HashMap, HashSet},
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
     fs::File,
     i32::MAX,
     io::{BufRead, BufReader},
@@ -30,7 +30,7 @@ fn get_current_height(c: char) -> i32 {
     }
 }
 
-type ClimbGraph = Graph<(usize, usize), u32, Directed>;
+type ClimbGraph = Graph<(usize, usize), (), Directed>;
 
 fn get_graph(lines: &Vec<Vec<char>>) -> (ClimbGraph, NodeIndex, NodeIndex, Vec<Vec<NodeIndex>>) {
     let mut graph = ClimbGraph::new();
@@ -51,16 +51,16 @@ fn get_graph(lines: &Vec<Vec<char>>) -> (ClimbGraph, NodeIndex, NodeIndex, Vec<V
     }
     for (i, j) in iproduct!(0..n, 0..m) {
         if i > 0 && heights[i - 1][j] - heights[i][j] <= 1 {
-            graph.add_edge(nodes[i][j].unwrap(), nodes[i - 1][j].unwrap(), 1);
+            graph.add_edge(nodes[i][j].unwrap(), nodes[i - 1][j].unwrap(), ());
         }
         if j > 0 && heights[i][j - 1] - heights[i][j] <= 1 {
-            graph.add_edge(nodes[i][j].unwrap(), nodes[i][j - 1].unwrap(), 1);
+            graph.add_edge(nodes[i][j].unwrap(), nodes[i][j - 1].unwrap(), ());
         }
         if i < n - 1 && heights[i + 1][j] - heights[i][j] <= 1 {
-            graph.add_edge(nodes[i][j].unwrap(), nodes[i + 1][j].unwrap(), 1);
+            graph.add_edge(nodes[i][j].unwrap(), nodes[i + 1][j].unwrap(), ());
         }
         if j < m - 1 && heights[i][j + 1] - heights[i][j] <= 1 {
-            graph.add_edge(nodes[i][j].unwrap(), nodes[i][j + 1].unwrap(), 1);
+            graph.add_edge(nodes[i][j].unwrap(), nodes[i][j + 1].unwrap(), ());
         }
     }
     (
@@ -140,14 +140,38 @@ fn dijkstra(graph: &ClimbGraph, start: &NodeIndex) -> HashMap<NodeIndex, i32> {
     dist
 }
 
-fn part1(lines: &Vec<String>) -> u32 {
+fn bfs(graph: &ClimbGraph, start: &NodeIndex) -> HashMap<NodeIndex, i32> {
+    let mut dist = HashMap::<NodeIndex, i32>::new();
+    let mut queue = VecDeque::new();
+    let mut explored = HashSet::new();
+    dist.insert(*start, 0);
+    queue.push_back(*start);
+    while let Some(u) = queue.pop_front() {
+        for v in graph.neighbors(u) {
+            if explored.insert(v) {
+                dist.insert(v, dist.get(&u).unwrap() + 1);
+                queue.push_back(v);
+            }
+        }
+    }
+    dist
+}
+
+fn part1_dijsktra(lines: &Vec<String>) -> u32 {
     let char_lines = lines.iter().map(|l| l.chars().collect_vec()).collect_vec();
     let (graph, start, end, _) = get_graph(&char_lines);
     let res = dijkstra(&graph, &start);
     *res.get(&end).expect("path not found") as u32
 }
 
-fn part2(lines: &Vec<String>) -> i32 {
+fn part1_bfs(lines: &Vec<String>) -> u32 {
+    let char_lines = lines.iter().map(|l| l.chars().collect_vec()).collect_vec();
+    let (graph, start, end, _) = get_graph(&char_lines);
+    let res = bfs(&graph, &start);
+    *res.get(&end).expect("path not found") as u32
+}
+
+fn part2_dijsktra(lines: &Vec<String>) -> i32 {
     let char_lines = lines.iter().map(|l| l.chars().collect_vec()).collect_vec();
     let mut potential_starts: Vec<(usize, usize)> = vec![];
     for (i, line) in char_lines.iter().enumerate() {
@@ -157,7 +181,7 @@ fn part2(lines: &Vec<String>) -> i32 {
             }
         }
     }
-    let (mut graph, start, end, nodes) = get_graph(&char_lines);
+    let (mut graph, _, end, nodes) = get_graph(&char_lines);
     graph.reverse();
     let res = dijkstra(&graph, &end);
     *potential_starts
@@ -167,11 +191,31 @@ fn part2(lines: &Vec<String>) -> i32 {
         .unwrap()
 }
 
+fn part2_bfs(lines: &Vec<String>) -> i32 {
+    let char_lines = lines.iter().map(|l| l.chars().collect_vec()).collect_vec();
+    let mut potential_starts: Vec<(usize, usize)> = vec![];
+    for (i, line) in char_lines.iter().enumerate() {
+        for (j, char) in line.iter().enumerate() {
+            if *char == 'a' {
+                potential_starts.push((i, j));
+            }
+        }
+    }
+    let (mut graph, _, end, nodes) = get_graph(&char_lines);
+    graph.reverse();
+    let res = bfs(&graph, &end);
+    *potential_starts
+        .iter()
+        .filter_map(|(i, j)| res.get(&nodes[*i][*j]))
+        .min()
+        .unwrap()
+}
+
 fn main() {
     let input = get_input();
-    let p1_total = part1(&input);
+    let p1_total = part1_bfs(&input);
     println!("Part1 total: {}", p1_total);
-    let p2_total = part2(&input);
+    let p2_total = part2_bfs(&input);
     println!("Part2 total: {}", p2_total);
 }
 
@@ -182,14 +226,26 @@ mod tests {
     use test::{black_box, Bencher};
 
     #[bench]
-    fn bench_part1(b: &mut Bencher) {
+    fn bench_part1_dijsktra(b: &mut Bencher) {
         let lines: Vec<String> = get_input();
-        b.iter(|| part1(black_box(&lines)));
+        b.iter(|| part1_dijsktra(black_box(&lines)));
     }
 
     #[bench]
-    fn bench_part2(b: &mut Bencher) {
+    fn bench_part1_bfs(b: &mut Bencher) {
         let lines: Vec<String> = get_input();
-        b.iter(|| part2(black_box(&lines)));
+        b.iter(|| part1_bfs(black_box(&lines)));
+    }
+
+    #[bench]
+    fn bench_part2_dijsktra(b: &mut Bencher) {
+        let lines: Vec<String> = get_input();
+        b.iter(|| part2_dijsktra(black_box(&lines)));
+    }
+
+    #[bench]
+    fn bench_part2_bfs(b: &mut Bencher) {
+        let lines: Vec<String> = get_input();
+        b.iter(|| part2_bfs(black_box(&lines)));
     }
 }
