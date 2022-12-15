@@ -9,4 +9,5 @@ authors = ["Arthur Pastel <arthur.pastel@gmail.com>"]
 [dependencies]
 itertools = "0.10.5"
 num-bigint = "0.4"
+parse-display = "0.7.0"
 petgraph = "0.6.2"
