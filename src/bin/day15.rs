@@ -2,13 +2,13 @@
 extern crate test;
 
 use std::{
-    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
     vec,
 };
 
 use itertools::Itertools;
+use rayon::prelude::*;
 
 const DAY: &str = "15";
 
@@ -136,11 +136,20 @@ fn part1(lines: &Vec<String>) -> u32 {
 fn part2(lines: &Vec<String>) -> u64 {
     const MAX_Y: i32 = 4000000;
     let pairs = get_pairs(lines);
-    for y in 0..=MAX_Y {
-        let intervals = get_sorted_intervals_on_line(&pairs, y);
-        if let Some(x) = find_first_hole_in_intervals(&intervals) {
-            return x as u64 * 4000000 + y as u64;
-        }
+    let result = (0..=MAX_Y)
+        .into_par_iter()
+        .map(|y| {
+            let intervals = get_sorted_intervals_on_line(&pairs, y);
+            if let Some(x) = find_first_hole_in_intervals(&intervals) {
+                Some(x as u64 * 4000000 + y as u64)
+            } else {
+                None
+            }
+        })
+        .find_first(|r: &Option<u64>| r.is_some());
+
+    if let Some(r) = result {
+        return r.unwrap();
     }
     panic!("Hole not found");
 }
