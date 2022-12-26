@@ -14,6 +14,8 @@ num-bigint = "0.4"
 parse-display = "0.7.0"
 petgraph = "0.6.2"
 rayon = "1.6.1"
+regex = "1.7.0"
+strum = { version = "0.24", features = ["derive"] }
 
 [lib]
 name = "priority_queue"
