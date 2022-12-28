@@ -95,10 +95,8 @@ struct PathSlice {
     len: usize,
 }
 
-fn part1(lines: &Vec<String>) -> usize {
-    let (occupancy, path) = get_data(lines);
-    let (width, height) = (occupancy[0].len(), occupancy.len());
-    let start = (
+fn get_starting_position(occupancy: &Vec<Vec<Option<bool>>>) -> (usize, usize) {
+    (
         0 as usize,
         occupancy[0]
             .iter()
@@ -107,7 +105,13 @@ fn part1(lines: &Vec<String>) -> usize {
             .next()
             .unwrap()
             .0,
-    );
+    )
+}
+
+fn part1(lines: &Vec<String>) -> usize {
+    let (occupancy, path) = get_data(lines);
+    let (width, height) = (occupancy[0].len(), occupancy.len());
+    let start = get_starting_position(&occupancy);
     let line_slices = (0..height)
         .map(|e| {
             let mut it = occupancy[e].iter().enumerate().filter(|(_, e)| e.is_some());
@@ -134,7 +138,6 @@ fn part1(lines: &Vec<String>) -> usize {
             }
         })
         .collect_vec();
-    println!("{:#?}", column_slices);
 
     let mut visited = vec![vec![None; width]; height];
     let mut pos = start.clone();
@@ -208,30 +211,271 @@ fn part1(lines: &Vec<String>) -> usize {
             direction = direction.get_new_direction(&step);
         }
 
-        println!("{:?} {:?}", pos, direction);
+        // println!("{:?} {:?}", pos, direction);
     }
-    for i in 0..height {
-        for j in 0..width {
-            if let Some(dir) = visited[i][j] {
-                match dir {
-                    Direction::Down => print!("👇"),
-                    Direction::Right => print!("👉"),
-                    Direction::Up => print!("👆"),
-                    Direction::Left => print!("👈"),
-                };
-            } else if let Some(v) = occupancy[i][j] {
-                print!("{}", if v { "⬛️" } else { "⬜" });
-            } else {
-                print!("🔳");
-            }
-        }
-        println!();
-    }
+    // for i in 0..height {
+    //     for j in 0..width {
+    //         if let Some(dir) = visited[i][j] {
+    //             match dir {
+    //                 Direction::Down => print!("👇"),
+    //                 Direction::Right => print!("👉"),
+    //                 Direction::Up => print!("👆"),
+    //                 Direction::Left => print!("👈"),
+    //             };
+    //         } else if let Some(v) = occupancy[i][j] {
+    //             print!("{}", if v { "⬛️" } else { "⬜" });
+    //         } else {
+    //             print!("🔳");
+    //         }
+    //     }
+    //     println!();
+    // }
     1000 * (pos.0 + 1) + 4 * (pos.1 + 1) + direction.int_value() as usize
 }
 
-fn part2(lines: &Vec<String>) -> u32 {
-    0
+use Direction::*;
+#[derive(Debug)]
+struct Link {
+    in_dir: Direction,
+    in_face: usize,
+    inverted: bool,
+}
+
+#[derive(Debug, Default)]
+struct Face {
+    occupancy: Vec<Vec<bool>>,
+    to_global_pos: Vec<Vec<(usize, usize)>>,
+    links: [Option<Link>; 4],
+}
+
+fn get_face_starting_position(occupancy: &Vec<Vec<bool>>) -> (usize, usize) {
+    (
+        0 as usize,
+        occupancy[0]
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| !**e)
+            .next()
+            .unwrap()
+            .0,
+    )
+}
+
+impl Face {
+    fn from_occupancy(occupancy: &Vec<Vec<Option<bool>>>, start: (usize, usize), n: usize) -> Face {
+        Face {
+            occupancy: occupancy
+                .iter()
+                .skip(start.0)
+                .take(n)
+                .map(|l| {
+                    l.iter()
+                        .skip(start.1)
+                        .take(n)
+                        .map(|e| e.unwrap())
+                        .collect_vec()
+                })
+                .collect_vec()
+                .clone(),
+            to_global_pos: (start.0..start.0 + n)
+                .map(|i| (start.1..start.1 + n).map(|j| (i, j)).collect_vec())
+                .collect_vec(),
+            ..Face::default()
+        }
+    }
+
+    fn add_link(&mut self, out_dir: Direction, in_face: usize, in_dir: Direction, inverted: bool) {
+        self.links[out_dir.int_value() as usize] = Some(Link {
+            in_dir,
+            in_face,
+            inverted,
+        })
+    }
+
+    fn pass_through(&self, dir: Direction, index: usize) -> ((usize, usize), usize, Direction) {
+        let n = self.occupancy.len();
+        let link = self.links[dir.int_value() as usize].as_ref().unwrap();
+        let new_index = if link.inverted { n - index - 1 } else { index };
+        let face_pos = match link.in_dir {
+            Up => (n - 1, new_index),
+            Right => (new_index, 0),
+            Down => (0, new_index),
+            Left => (new_index, n - 1),
+        };
+        (face_pos, link.in_face, link.in_dir)
+    }
+}
+
+fn part2(lines: &Vec<String>) -> usize {
+    let (occupancy, path) = get_data(lines);
+    let (width, height) = (occupancy[0].len(), occupancy.len());
+    let n = occupancy.len() / 4;
+    // let n = occupancy.len() / 3;
+    // Example
+    // let mut faces = [
+    //     Face::from_occupancy(&occupancy, (0, 2 * n), n),
+    //     Face::from_occupancy(&occupancy, (n, 0), n),
+    //     Face::from_occupancy(&occupancy, (n, n), n),
+    //     Face::from_occupancy(&occupancy, (n, 2 * n), n),
+    //     Face::from_occupancy(&occupancy, (2 * n, 2 * n), n),
+    //     Face::from_occupancy(&occupancy, (2 * n, 3 * n), n),
+    // ];
+    // {
+    //     faces[0].add_link(Up, 1, Down, true);
+    //     faces[0].add_link(Right, 5, Left, true);
+    //     faces[0].add_link(Down, 3, Down, false);
+    //     faces[0].add_link(Left, 2, Down, false);
+
+    //     faces[1].add_link(Up, 0, Down, true);
+    //     faces[1].add_link(Right, 2, Right, false);
+    //     faces[1].add_link(Down, 4, Up, true);
+    //     faces[1].add_link(Left, 5, Up, true);
+
+    //     faces[2].add_link(Up, 0, Right, false);
+    //     faces[2].add_link(Right, 3, Right, false);
+    //     faces[2].add_link(Down, 4, Right, true);
+    //     faces[2].add_link(Left, 1, Left, false);
+
+    //     faces[3].add_link(Up, 0, Up, false);
+    //     faces[3].add_link(Right, 5, Down, true);
+    //     faces[3].add_link(Down, 4, Down, false);
+    //     faces[3].add_link(Left, 2, Left, false);
+
+    //     faces[4].add_link(Up, 3, Up, false);
+    //     faces[4].add_link(Right, 5, Right, false);
+    //     faces[4].add_link(Down, 1, Up, true);
+    //     faces[4].add_link(Left, 2, Up, true);
+
+    //     faces[5].add_link(Up, 3, Left, true);
+    //     faces[5].add_link(Right, 0, Left, true);
+    //     faces[5].add_link(Down, 1, Right, true);
+    //     faces[5].add_link(Left, 4, Left, false);
+    // }
+
+    let mut faces = [
+        Face::from_occupancy(&occupancy, (0, n), n),
+        Face::from_occupancy(&occupancy, (0, 2 * n), n),
+        Face::from_occupancy(&occupancy, (n, n), n),
+        Face::from_occupancy(&occupancy, (2 * n, 0), n),
+        Face::from_occupancy(&occupancy, (2 * n, n), n),
+        Face::from_occupancy(&occupancy, (3 * n, 0), n),
+    ];
+    {
+        faces[0].add_link(Up, 5, Right, false);
+        faces[0].add_link(Right, 1, Right, false);
+        faces[0].add_link(Down, 2, Down, false);
+        faces[0].add_link(Left, 3, Right, true);
+
+        faces[1].add_link(Up, 5, Up, false);
+        faces[1].add_link(Right, 4, Left, true);
+        faces[1].add_link(Down, 2, Left, false);
+        faces[1].add_link(Left, 0, Left, false);
+
+        faces[2].add_link(Up, 0, Up, false);
+        faces[2].add_link(Right, 1, Up, false);
+        faces[2].add_link(Down, 4, Down, false);
+        faces[2].add_link(Left, 3, Down, false);
+
+        faces[3].add_link(Up, 2, Right, false);
+        faces[3].add_link(Right, 4, Right, false);
+        faces[3].add_link(Down, 5, Down, false);
+        faces[3].add_link(Left, 0, Right, true);
+
+        faces[4].add_link(Up, 2, Up, false);
+        faces[4].add_link(Right, 1, Left, true);
+        faces[4].add_link(Down, 5, Left, false);
+        faces[4].add_link(Left, 3, Left, false);
+
+        faces[5].add_link(Up, 3, Up, false);
+        faces[5].add_link(Right, 4, Up, false);
+        faces[5].add_link(Down, 1, Down, false);
+        faces[5].add_link(Left, 0, Down, false);
+    }
+    let mut direction = Direction::Right;
+    let mut face_index = 0usize;
+    let mut pos = get_face_starting_position(&faces[face_index].occupancy);
+
+    let mut visited = vec![vec![None; width]; height];
+    let global_pos = faces[face_index].to_global_pos[pos.0][pos.1];
+    visited[global_pos.0][global_pos.1] = Some(direction);
+    for step in path {
+        match step {
+            Step::Move(dist) => {
+                for _ in 0..dist {
+                    let mut next_pos = pos.clone();
+                    let mut next_face_index = face_index;
+                    let mut next_direction = direction.clone();
+                    match direction {
+                        Up => {
+                            if pos.0 == 0 {
+                                (next_pos, next_face_index, next_direction) =
+                                    faces[face_index].pass_through(Up, pos.1)
+                            } else {
+                                next_pos.0 = pos.0 - 1;
+                            }
+                        }
+                        Right => {
+                            if pos.1 == n - 1 {
+                                (next_pos, next_face_index, next_direction) =
+                                    faces[face_index].pass_through(Right, pos.0)
+                            } else {
+                                next_pos.1 = pos.1 + 1;
+                            }
+                        }
+                        Down => {
+                            if pos.0 == n - 1 {
+                                (next_pos, next_face_index, next_direction) =
+                                    faces[face_index].pass_through(Down, pos.1)
+                            } else {
+                                next_pos.0 = pos.0 + 1;
+                            }
+                        }
+                        Left => {
+                            if pos.1 == 0 {
+                                (next_pos, next_face_index, next_direction) =
+                                    faces[face_index].pass_through(Left, pos.0)
+                            } else {
+                                next_pos.1 = pos.1 - 1;
+                            }
+                        }
+                    }
+                    if faces[next_face_index].occupancy[next_pos.0][next_pos.1] {
+                        break;
+                    }
+                    pos = next_pos;
+                    face_index = next_face_index;
+                    direction = next_direction;
+                    let global_pos = faces[face_index].to_global_pos[pos.0][pos.1];
+                    visited[global_pos.0][global_pos.1] = Some(direction);
+                }
+            }
+            Step::RotateCW => {
+                direction = Direction::from_int((direction.int_value() + 1) % 4).unwrap()
+            }
+            Step::RotateCCW => {
+                direction = Direction::from_int((direction.int_value() + 3) % 4).unwrap()
+            }
+        }
+    }
+    // for i in 0..height {
+    //     for j in 0..width {
+    //         if let Some(dir) = visited[i][j] {
+    //             match dir {
+    //                 Direction::Down => print!("👇"),
+    //                 Direction::Right => print!("👉"),
+    //                 Direction::Up => print!("👆"),
+    //                 Direction::Left => print!("👈"),
+    //             };
+    //         } else if let Some(v) = occupancy[i][j] {
+    //             print!("{}", if v { "⬛️" } else { "⬜" });
+    //         } else {
+    //             print!("🔳");
+    //         }
+    //     }
+    //     println!();
+    // }
+    let final_pos = faces[face_index].to_global_pos[pos.0][pos.1];
+    1000 * (final_pos.0 + 1) + 4 * (final_pos.1 + 1) + direction.int_value() as usize
 }
 
 fn main() {
