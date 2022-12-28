@@ -46,7 +46,7 @@ fn part1(lines: &Vec<String>) -> String {
     }
     snafu.chars().rev().join("")
 }
-fn part2(lines: &Vec<String>) -> u32 {
+fn part2(_lines: &Vec<String>) -> u32 {
     0
 }
 

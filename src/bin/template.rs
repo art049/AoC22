@@ -19,10 +19,10 @@ fn get_input() -> Vec<String> {
         .collect_vec()
 }
 
-fn part1(lines: &Vec<String>) -> u32 {
+fn part1(_lines: &Vec<String>) -> u32 {
     0
 }
-fn part2(lines: &Vec<String>) -> u32 {
+fn part2(_lines: &Vec<String>) -> u32 {
     0
 }
 

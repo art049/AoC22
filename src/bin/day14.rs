@@ -4,7 +4,7 @@ extern crate test;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    thread, vec,
+    vec,
 };
 
 use itertools::Itertools;

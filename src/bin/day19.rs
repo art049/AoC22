@@ -3,9 +3,8 @@
 extern crate test;
 
 use int_enum::IntEnum;
-use itertools::{concat, Itertools};
+use itertools::Itertools;
 use regex::Regex;
-use std::iter;
 
 use std::{
     fs::File,
@@ -200,9 +199,9 @@ fn part1(lines: &Vec<String>) -> u32 {
             }
             for kind in Resource::iter().rev() {
                 let kind_index = kind.int_value() as usize;
-                if (kind != Resource::Geode
+                if kind != Resource::Geode
                     && state.production.0[kind_index]
-                        >= *blueprint.0.map(|c| c.0[kind_index]).iter().max().unwrap())
+                        >= *blueprint.0.map(|c| c.0[kind_index]).iter().max().unwrap()
                 {
                     continue;
                 }

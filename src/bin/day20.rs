@@ -37,11 +37,11 @@ fn apply_transformation(data: LinkedList<i64>) -> LinkedList<i64> {
         data.push_back(elt);
         data.append(&mut rest);
     }
-    data.into_iter().map(|(i, e)| e).collect()
+    data.into_iter().map(|(_i, e)| e).collect()
 }
 
 fn part1(lines: &Vec<String>) -> u32 {
-    let mut data: LinkedList<i64> = lines.iter().map(|l| l.parse().unwrap()).collect();
+    let data: LinkedList<i64> = lines.iter().map(|l| l.parse().unwrap()).collect();
     let data = apply_transformation(data);
     let data_vec = data.iter().collect_vec();
     let zero_index = data
@@ -86,7 +86,7 @@ fn part2(lines: &Vec<String>) -> i64 {
     let data_vec = data.iter().collect_vec();
     let zero_index = data
         .iter()
-        .find_position(|(i, e)| *e == 0)
+        .find_position(|(_i, e)| *e == 0)
         .expect("not found")
         .0;
     [1000, 2000, 3000]
